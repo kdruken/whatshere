@@ -5,10 +5,11 @@ K.Druken (kelsey.druken@anu.edu.au)
 NCI
 
 Script to quickly find out what file types (number and capacity) are found within
-a specified directory. 
+a specified directory. For specific file type, use the '--tpye' option. To output the full 
+paths of all found files, use '--log'. 
 
 Usage:
-	>> python whatshere.py <TOP-DIRECTORY> [--<MB/TB/GB/PB>]
+	>> python whatshere.py <TOP-DIRECTORY> [--<MB/GB/TB>] [--type <extension>] [--log]
 
 
 Notes: 
@@ -16,12 +17,6 @@ Notes:
 	  (messages will be displayed for any files the scan is unable to read)
 
 
-Tip:
-
-	To run this from any location on the filesystem, add the following line to your 
-	startup or an executable that sets up your working environment. 
-
-	alias whatshere="<path_to_whatshere.py>"
 	
 '''
 
@@ -65,7 +60,7 @@ class WhatIsHere:
 
 
 
-def explore_path(path):
+def explore_path(path, fileType):
 	directories = []
 	nondirectories = []
 	try:
@@ -73,10 +68,13 @@ def explore_path(path):
 			fullname = os.path.join(path, filename)
 			if os.path.isdir(fullname):
 				directories.append(fullname)
-			elif os.path.exists(fullname):
-				nondirectories.append(fullname)
+			elif os.path.isfile(fullname):
+				if fileType and fullname.endswith('.'+fileType):
+					nondirectories.append(fullname)
+				elif fileType == None:
+					nondirectories.append(fullname)
 			else:
-				print 'Permission denied or broken symlink: ', path
+				print 'Permission denied or broken symlink: ', fullname
 	except OSError:
 		print 'Permission denied: ', path
 		pass	
@@ -88,14 +86,16 @@ def explore_path(path):
 
 
 
-def parallel_worker(i, unsearched, found):
+def parallel_worker(i, unsearched, found, fileType, log):
 	scan = WhatIsHere()
 	while True:
 		if unsearched.empty() == False:
 			path = unsearched.get()
-			dirs, files = explore_path(path)
+			dirs, files = explore_path(path, fileType)
 			for file in files:
 				scan.add(file)
+				if log:
+					print file
 			for newdir in dirs:
 				unsearched.put(newdir)
 			unsearched.task_done()
@@ -106,9 +106,9 @@ def parallel_worker(i, unsearched, found):
 	
 	found.put(scan.found)
  
+@profile
+def find_files(path, fileType, log):
 
-def find_files():
-	path = sys.argv[1]
 	print 'Checking under directory: ', path
 
 	m = mp.Manager()
@@ -120,7 +120,7 @@ def find_files():
 		np = 7
 		jobs = []
 		for i in range(np):	
-			p = mp.Process(target=parallel_worker, args=(i, unsearched, found))
+			p = mp.Process(target=parallel_worker, args=(i, unsearched, found, fileType, log))
 			jobs.append(p)
 		for p in jobs:
 			p.start()
@@ -141,18 +141,26 @@ def find_files():
 
 
 def main():
-
-	results = find_files()
-
 	## What capacity units (default = 'MB') ##
 	units = {'KB': 1e3, 'MB': 1e6, 'GB': 1e9, 'TB': 1e12, 'PB': 1e15}
-	try:
-		U = sys.argv[2].strip('--').upper()
-		if U in units.keys():
-			u = units[U]		
-	except:
-		u = units['MB'] 
-		U = 'MB'
+
+	path = log = fileType = None
+	U = 'GB'
+	for item in sys.argv:
+		if os.path.exists(item):
+			path = item
+		if item.count('type') > 0:
+			fileType = sys.argv[sys.argv.index(item) + 1]
+		if item.count('log') > 0:
+			log = True
+		if item.strip('--').upper() in units.keys():
+			U = item.strip('--').upper()
+	u = units[U]
+
+	print 'Specific file type(s): ', fileType
+
+	results = find_files(path, fileType, log)
+
 
 	totals = {}
 	for result in results:
