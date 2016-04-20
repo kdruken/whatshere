@@ -106,7 +106,6 @@ def parallel_worker(i, unsearched, found, fileType, log):
 	
 	found.put(scan.found)
  
-@profile
 def find_files(path, fileType, log):
 
 	print 'Checking under directory: ', path
