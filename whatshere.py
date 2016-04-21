@@ -4,17 +4,22 @@
 K.Druken (kelsey.druken@anu.edu.au)
 NCI
 
-Script to quickly find out what file types (number and capacity) are found within
-a specified directory. For specific file type, use the '--tpye' option. To output the full 
+Script to quickly find out what file types 
+(number and capacity) are found within a 
+specified directory. For specific file type, 
+use the '--type' option. To output the full 
 paths of all found files, use '--log'. 
 
 Usage:
-	>> python whatshere.py <TOP-DIRECTORY> [--<MB/GB/TB>] [--type <extension>] [--log]
+>> python whatshere.py <TOP-DIRECTORY> 
+   [--<MB/GB/TB>] [--type <extension>] [--log]
 
 
 Notes: 
-	- Only files you have permission to read will be reflected in the totals
-	  (messages will be displayed for any files the scan is unable to read)
+- Only files you have permission to read 
+  will be reflected in the totals (messages 
+  will be displayed for any files the scan 
+  is unable to read)
 
 
 	
@@ -146,6 +151,9 @@ def main():
 	path = log = fileType = None
 	U = 'GB'
 	for item in sys.argv:
+		if item in ['--help', '-help', '-h', '--h']:
+			print __doc__
+			sys.exit()
 		if os.path.exists(item):
 			path = item
 		if item.count('type') > 0:
